@@ -1,151 +1,239 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Научная библиотека</title>
-  <style>
-    :root {
-      --brand: #900;
-      --brand-2: #c00;
-      --bg: #f6f6f8;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); }
-    header { background: var(--brand); color: #fff; padding: 14px 16px; font-weight: 600; }
-    .container { padding: 16px; max-width: 1024px; margin: 0 auto; }
-    .file-card {
-      background: #fff; border-radius: 10px;
-      padding: 14px; margin: 10px 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
-      display: flex; justify-content: space-between; gap: 12px; align-items: center;
-    }
-    .file-title { font-size: 15px; line-height: 1.35; }
-    .actions { display: flex; gap: 8px; white-space: nowrap; }
-    button, .btn {
-      appearance: none; border: 0; border-radius: 8px;
-      padding: 8px 14px; font-size: 14px; cursor: pointer;
-      background: var(--brand); color: #fff; text-decoration: none; display: inline-flex; align-items: center;
-    }
-    button:hover, .btn:hover { background: var(--brand-2); }
-    .secondary { background: #444; }
-    .secondary:hover { background: #222; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Научная библиотека — Липецкий филиал РАНХиГС</title>
+<style>
+  :root {
+    --brand: #900;
+    --brand-2: #c00;
+    --bg: #f6f6f8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: var(--bg); color: #111; }
+  header { background: var(--brand); color: #fff; padding: 16px; }
+  header .title { font-size: 18px; font-weight: 700; }
+  header .sub { font-size: 13px; opacity: .9; }
+  .container { padding: 16px; max-width: 1024px; margin: 0 auto; }
+  .search-bar {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    background: #fff; padding: 12px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .search-bar input {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 15px;
+  }
+  .search-bar button {
+    appearance: none; border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer;
+    background: var(--brand); color: #fff; font-size: 15px;
+  }
+  .search-bar button:hover { background: var(--brand-2); }
+  .files { margin-top: 14px; }
+  .file-card {
+    background: #fff; border-radius: 10px; padding: 14px;
+    margin: 10px 0; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    display: flex; justify-content: space-between; gap: 12px; align-items: center;
+  }
+  .file-title { font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+  .actions { display: flex; gap: 8px; white-space: nowrap; }
+  button.btn, .btn {
+    appearance: none; border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer;
+    background: var(--brand); color: #fff; text-decoration: none; display: inline-flex; align-items: center; font-size: 14px;
+  }
+  .btn:hover { background: var(--brand-2); }
+  .secondary { background: #444; }
+  .secondary:hover { background: #222; }
+  .hint { color: #c00; font-size: 13px; margin-right: 8px; }
 
-    /* viewer modal */
-    .viewer {
-      position: fixed; inset: 0; display: none;
-      align-items: center; justify-content: center;
-      background: rgba(0,0,0,.7); z-index: 9999;
-      padding: 10px;
-    }
-    .viewer-content {
-      position: relative; width: 100%; height: 100%;
-      max-width: 1400px; max-height: 98vh;
-      background: #fff; border-radius: 10px; overflow: hidden;
-    }
-    .close-btn {
-      position: absolute; top: 8px; right: 8px; z-index: 2;
-      background: var(--brand); color: #fff; border: 0; border-radius: 6px;
-      padding: 7px 12px; cursor: pointer;
-    }
-    .frame {
-      width: 100%; height: 100%; border: 0;
-      -webkit-overflow-scrolling: touch;
-    }
-    .hint { color: #c00; font-size: 13px; margin-right: 10px; }
+  .empty { text-align: center; color: #666; padding: 40px 10px; }
 
-    @media (max-width: 640px) {
-      .file-card { flex-direction: column; align-items: stretch; }
-      .actions { justify-content: flex-end; }
-    }
-  </style>
+  /* viewer modal */
+  .viewer {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.7); z-index: 9999; padding: 10px;
+  }
+  .viewer-content {
+    position: relative; width: 100%; height: 100%;
+    max-width: 1400px; max-height: 98vh; background: #fff; border-radius: 10px; overflow: hidden;
+  }
+  .close-btn {
+    position: absolute; top: 8px; right: 8px; z-index: 2;
+    background: var(--brand); color: #fff; border: 0; border-radius: 6px; padding: 7px 12px; cursor: pointer;
+  }
+  .frame {
+    width: 100%; height: 100%; border: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (max-width: 640px) {
+    .file-card { flex-direction: column; align-items: stretch; }
+    .actions { justify-content: flex-end; }
+  }
+</style>
 </head>
 <body>
-<header>📚 Научная библиотека — Липецкий филиал РАНХиГС</header>
+
+<header>
+  <div class="title">📚 Научная библиотека</div>
+  <div class="sub">Липецкий филиал РАНХиГС</div>
+</header>
 
 <div class="container">
-
-  <!-- Пример PDF -->
-  <div class="file-card">
-    <div class="file-title">Корнев А.С. Основы оперативно-разыскной деятельности (A5).pdf</div>
-    <div class="actions">
-      <button onclick="viewFile('Корнев А.С. Основы оперативно-разыскной деятельности(A5).pdf')">Смотреть</button>
-      <a class="btn secondary" href="Корнев А.С. Основы оперативно-разыскной деятельности(A5).pdf" download>Скачать</a>
-    </div>
+  <!-- Поиск -->
+  <div class="search-bar">
+    <input id="q" type="search" placeholder="Поиск по названию файла…" oninput="applyFilter()" />
+    <button onclick="reloadFiles()">Обновить</button>
   </div>
 
-  <!-- Пример архива -->
-  <div class="file-card">
-    <div class="file-title">Пример архива.rar</div>
-    <div class="actions">
-      <span class="hint">Предпросмотр недоступен</span>
-      <a class="btn secondary" href="Пример архива.rar" download>Скачать</a>
-    </div>
-  </div>
-
+  <!-- Список -->
+  <div id="files" class="files"></div>
 </div>
 
 <!-- Просмотрщик -->
 <div class="viewer" id="viewer">
   <div class="viewer-content">
     <button class="close-btn" onclick="closeViewer()">Закрыть</button>
-    <iframe
-      id="viewerFrame"
-      class="frame"
-      allow="fullscreen"
-      allowfullscreen
-      webkitallowfullscreen
-      referrerpolicy="no-referrer"
-    ></iframe>
+    <iframe id="viewerFrame" class="frame" allow="fullscreen" allowfullscreen webkitallowfullscreen referrerpolicy="no-referrer"></iframe>
   </div>
 </div>
 
 <script>
-  // Определяем iOS (включая iPadOS)
+  const OWNER = 'Ranepalip';
+  const REPO  = '-';
+  const BRANCH = 'main';
+
+  const filesEl = document.getElementById('files');
+  const qEl = document.getElementById('q');
+
+  let allFiles = [];
+
+  // iOS определение
   function isIOS() {
     const ua = navigator.userAgent;
     const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
     return /iPad|iPhone|iPod/.test(ua) || iPadOS;
   }
 
-  // Открытие файла
-  function viewFile(filename) {
-    const ext = filename.split('.').pop().toLowerCase();
-    const encoded = encodeURIComponent(filename);
+  async function reloadFiles() {
+    filesEl.innerHTML = '<div class="empty">Загружаю список…</div>';
+    try {
+      // Получаем содержимое корня репозитория
+      const url = `https://api.github.com/repos/${OWNER}/${encodeURIComponent(REPO)}/contents?ref=${BRANCH}`;
+      const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' }});
+      if (!res.ok) throw new Error('GitHub API error: ' + res.status);
+      const data = await res.json();
+      // Берём только файлы
+      allFiles = data.filter(x => x.type === 'file');
+      applyFilter();
+    } catch (e) {
+      filesEl.innerHTML = `<div class="empty">Не удалось получить список файлов. Ошибка: ${e.message}</div>`;
+    }
+  }
 
-    // URL pdf.js на ваших GitHub Pages (так как вы держите pdf.js у себя)
-    // ВАЖНО: путь `/-/` — это ваш файл в корне репозитория Pages.
-    const pdfViewerUrl = `/pdfjs/web/viewer.html?file=/-/${encoded}`;
+  function applyFilter() {
+    const term = (qEl.value || '').trim().toLowerCase();
+    const list = !term
+      ? allFiles
+      : allFiles.filter(it => it.name.toLowerCase().includes(term));
 
-    // Для изображений и простых форматов
-    const simpleFormats = ['jpg','jpeg','png','gif','txt','html'];
+    if (!list.length) {
+      filesEl.innerHTML = '<div class="empty">Ничего не найдено</div>';
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    list.forEach(file => frag.appendChild(renderFileRow(file)));
+    filesEl.innerHTML = '';
+    filesEl.appendChild(frag);
+  }
+
+  function renderFileRow(file) {
+    const name = file.name;
+    const ext = name.split('.').pop().toLowerCase();
+    const container = document.createElement('div');
+    container.className = 'file-card';
+
+    const title = document.createElement('div');
+    title.className = 'file-title';
+    title.textContent = name;
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+
+    // Полный путь файла для viewer (лежит в корне Pages)
+    const encoded = encodeURIComponent(name);
+    const viewerUrl = `/pdfjs/web/viewer.html?file=/-/${encoded}`;
 
     if (ext === 'pdf') {
-      // iOS → открываем viewer в новой вкладке (iframe может дать белый экран)
-      if (isIOS()) {
-        window.open(pdfViewerUrl, '_blank', 'noopener');
-        return;
-      }
-      // Остальные платформы → показываем в модальном окне
-      openInModal(pdfViewerUrl);
-    } else if (simpleFormats.includes(ext)) {
-      // На iOS — тоже надёжнее новая вкладка
-      if (isIOS()) {
-        window.open(filename, '_blank', 'noopener');
-        return;
-      }
-      openInModal(filename);
+      const watch = document.createElement('button');
+      watch.className = 'btn';
+      watch.textContent = 'Смотреть';
+      watch.onclick = () => openPdf(viewerUrl);
+      actions.appendChild(watch);
+
+      const dl = document.createElement('a');
+      dl.className = 'btn secondary';
+      dl.href = `/-/${encoded}`;
+      dl.download = name;
+      dl.textContent = 'Скачать';
+      actions.appendChild(dl);
+
+    } else if (['jpg','jpeg','png','gif','txt','html'].includes(ext)) {
+      const watch = document.createElement('button');
+      watch.className = 'btn';
+      watch.textContent = 'Смотреть';
+      watch.onclick = () => openSimple(`/-/${encoded}`);
+      actions.appendChild(watch);
+
+      const dl = document.createElement('a');
+      dl.className = 'btn secondary';
+      dl.href = `/-/${encoded}`;
+      dl.download = name;
+      dl.textContent = 'Скачать';
+      actions.appendChild(dl);
+
     } else {
-      alert('Предпросмотр недоступен для этого типа файла. Скачайте архив.');
+      const hint = document.createElement('span');
+      hint.className = 'hint';
+      hint.textContent = 'Предпросмотр недоступен';
+      actions.appendChild(hint);
+
+      const dl = document.createElement('a');
+      dl.className = 'btn secondary';
+      dl.href = `/-/${encoded}`;
+      dl.download = name;
+      dl.textContent = 'Скачать';
+      actions.appendChild(dl);
     }
+
+    container.appendChild(title);
+    container.appendChild(actions);
+    return container;
+  }
+
+  function openPdf(viewerUrl) {
+    if (isIOS()) {
+      // iOS — только новая вкладка
+      window.open(viewerUrl, '_blank', 'noopener');
+      return;
+    }
+    openInModal(viewerUrl);
+  }
+
+  function openSimple(url) {
+    if (isIOS()) {
+      window.open(url, '_blank', 'noopener');
+      return;
+    }
+    openInModal(url);
   }
 
   function openInModal(url) {
     const viewer = document.getElementById('viewer');
     const frame = document.getElementById('viewerFrame');
-    // Сначала показываем окно, затем задаём src — так Safari реже «белеет»
     viewer.style.display = 'flex';
-    setTimeout(() => { frame.src = url; }, 30);
+    // небольшой таймер уменьшает вероятность «белого экрана» в Safari
+    setTimeout(() => frame.src = url, 30);
   }
 
   function closeViewer() {
@@ -154,6 +242,9 @@
     frame.src = 'about:blank';
     viewer.style.display = 'none';
   }
+
+  // загрузка списка при открытии
+  reloadFiles();
 </script>
 </body>
 </html>
