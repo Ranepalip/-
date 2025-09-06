@@ -25,7 +25,6 @@
     .actions a { margin-right:15px; color:#a00000; text-decoration:none; font-weight:bold; }
     .actions a:hover { text-decoration:underline; }
 
-    /* Модалка */
     .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1000; align-items:center; justify-content:center; }
     .modal.open { display:flex; }
     .modal-content { background:#fff; max-width:95%; max-height:90%; border-radius:8px; padding:15px; overflow:auto; position:relative; }
@@ -67,10 +66,10 @@
   </div>
 
   <script>
-    /* === Настройки репозитория === */
-    const repo   = "Ranepalip/-";  // {owner}/{repo}
+    /* === Настройки === */
+    const repo   = "Ranepalip/-";   // owner/repo
     const branch = "main";
-    const token  = "";             // если репозиторий приватный — вставьте PAT
+    const token  = "";              // если репозиторий приватный — вставьте PAT
 
     const [owner, repoName] = repo.split('/');
 
@@ -86,8 +85,14 @@
       return str.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
     }
 
+    // Превращаем путь репозитория в URL на GitHub Pages (same-origin)
+    function toPagesUrl(path){
+      const escaped = path.split('/').map(encodeURIComponent).join('/');
+      return `${location.origin}/${escaped}`;
+    }
+
     async function searchFiles(){
-      const q = document.getElementById('query').value.trim().toLowerCase();
+      const q   = document.getElementById('query').value.trim().toLowerCase();
       const box = document.getElementById('results');
       box.textContent = 'Загрузка…';
 
@@ -106,10 +111,8 @@
         if(!filtered.length){ box.textContent = 'Ничего не найдено'; return; }
 
         filtered.forEach(f=>{
-          const path = f.path;                             // сырой путь
-          const raw  = `https://raw.githubusercontent.com/${repo}/${branch}/${encodeURIComponent(path)}`;
+          const path = f.path;
           const ext  = path.split('.').pop().toLowerCase();
-
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `
@@ -117,7 +120,7 @@
             <p>${path}</p>
             <small>${(f.size/1024).toFixed(2)} KB</small>
             <div class="actions">
-              <a href="${raw}" target="_blank" rel="noopener">Скачать</a>
+              <a href="${toPagesUrl(path)}" target="_blank" rel="noopener">Скачать</a>
               <a href="#" onclick="openPreview('${path}','${ext}');return false;">Смотреть</a>
             </div>`;
           box.appendChild(card);
@@ -140,38 +143,34 @@
       }
     }
 
-    // Главная функция предпросмотра
     function openPreview(path, ext){
       const fileName = path.split('/').pop();
+      const fileUrl  = toPagesUrl(path); // same-origin ссылка на сам файл
+
       mtitle.textContent = fileName;
-
-      // ссылку «Скачать» оставляем с raw.githubusercontent.com
-      const rawUrl = `https://raw.githubusercontent.com/${repo}/${branch}/${encodeURIComponent(path)}`;
-      mdown.href = rawUrl;
-      mopen.href = rawUrl;
-
-      // А ДЛЯ ПРЕДПРОСМОТРА — CDN (исправляет iOS Safari)
-      const cdnUrl = `https://cdn.jsdelivr.net/gh/${owner}/${repoName}@${branch}/${encodeURI(path)}`;
+      mdown.href = fileUrl;  // скачивание — тоже с Pages
+      mopen.href = fileUrl;
 
       mstatus.textContent = '';
       mview.innerHTML = '';
       modal.classList.add('open');
 
       if(ext === 'pdf'){
-        const viewer = 'https://mozilla.github.io/pdf.js/web/viewer.html';
-        const viewerUrl = `${viewer}?file=${encodeURI(cdnUrl)}#zoom=page-width&pagemode=none`;
-        modal.classList.remove('open');  // в новой вкладке
+        // ЛОКАЛЬНЫЙ viewer из твоего же репозитория/Pages
+        const viewer = `${location.origin}/pdfjs/web/viewer.html`;
+        const viewerUrl = `${viewer}?file=${encodeURIComponent(fileUrl)}#zoom=page-width&pagemode=none`;
+        modal.classList.remove('open'); // открываем в новой вкладке
         openInNewTab(viewerUrl);
         return;
       }
 
       if(['png','jpg','jpeg','webp','gif'].includes(ext)){
-        mview.innerHTML = `<img src="${cdnUrl}" alt="${escapeHtml(fileName)}">`;
+        mview.innerHTML = `<img src="${fileUrl}" alt="${escapeHtml(fileName)}">`;
         return;
       }
 
       if(['txt','md','csv','log','html','htm'].includes(ext)){
-        fetch(cdnUrl, {cache:'no-store'})
+        fetch(fileUrl, {cache:'no-store'})
           .then(r=>r.text())
           .then(t=> mview.innerHTML = `<pre>${escapeHtml(t)}</pre>`)
           .catch(()=> mview.innerHTML = `<div class="hint">Ошибка предпросмотра</div>`);
