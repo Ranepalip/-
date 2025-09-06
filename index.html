@@ -5,22 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Липецкий филиал РАНХиГС — Поиск файлов</title>
 
-<!-- Поллифилы только для старых Safari/iOS (если нужно) -->
-<script>
-(function () {
-  var needPolyfills = (!('fetch' in window)) || (!('Promise' in window));
-  if (needPolyfills) {
-    var p = document.createElement('script');
-    p.src = 'https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js';
-    p.crossOrigin = 'anonymous';
-    document.head.appendChild(p);
-    var f = document.createElement('script');
-    f.src = 'https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.js';
-    f.crossOrigin = 'anonymous';
-    document.head.appendChild(f);
-  }
-})();
-</script>
+<!-- (необязательно) файл token.js c window.GH_TOKEN="ghp_xxx" чтобы не упираться в лимиты -->
+<script src="token.js" defer></script>
+
+<!-- Полифилы ДОЛЖНЫ грузиться раньше основного кода на старых Safari -->
+<script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.js"></script>
 
 <style>
   :root{--bg:#ffffff;--brand:#9d1d20;--ink:#202124;--muted:#646a73;--panel:#f7f7f8;--border:#e4e6ea;--link:#b01e22;}
@@ -99,7 +89,7 @@
   </section>
 </main>
 
-<!-- Модальное окно предпросмотра -->
+<!-- Модалка предпросмотра -->
 <div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle">
   <div class="modal-card">
     <div class="modal-head">
@@ -117,8 +107,8 @@
 
 <script>
 /* ===== Конфиг репозитория ===== */
-var OWNER  = "Ranepalip";   // <- ваш логин/организация
-var REPO   = "-";           // <- ваш репозиторий
+var OWNER  = "Ranepalip";   // <- замените на свой логин/организацию
+var REPO   = "-";           // <- замените на свой репозиторий
 var BRANCH = "main";        // <- ветка
 
 /* ===== DOM ===== */
@@ -135,8 +125,6 @@ var mdown   = document.getElementById('mdownload');
 var mopen   = document.getElementById('mopen');
 var mstatus = document.getElementById('mstatus');
 
-var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-
 function human(n){
   if(!(n>0)) return "";
   if(n<1024) return n+" B";
@@ -145,14 +133,19 @@ function human(n){
   return n.toFixed(2)+" "+u[i];
 }
 
-/* ===== Получение дерева ===== */
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);});}
+
+/* ===== GitHub API ===== */
 var treeCache = null;
 
 function fetchJson(url){
-  return fetch(url).then(function(r){
-    if(!r.ok) return r.text().then(function(t){throw new Error(r.status+" "+r.statusText+"\n"+t);});
-    return r.json();
-  });
+  var headers = { "Accept":"application/vnd.github+json" };
+  if (window.GH_TOKEN) headers["Authorization"] = "Bearer " + window.GH_TOKEN;
+  return fetch(url, { headers: headers, cache: 'no-store', mode: 'cors' })
+    .then(function(r){
+      if(!r.ok) return r.text().then(function(t){throw new Error(r.status+" "+r.statusText+"\n"+t);});
+      return r.json();
+    });
 }
 
 function getTree(){
@@ -164,14 +157,12 @@ function getTree(){
     metaEl.textContent = "";
     return treeCache;
   }).catch(function(err){
-    metaEl.textContent = "Ошибка GitHub API: "+err.message;
+    metaEl.textContent = "Ошибка GitHub API: "+err.message+"\nПопробуйте позже или добавить токен в token.js";
     throw err;
   });
 }
 
 /* ===== Отрисовка ===== */
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);});}
-
 function render(items){
   if (!items.length){ listEl.innerHTML = '<div class="empty">Ничего не найдено</div>'; return; }
   listEl.innerHTML = items.map(function(f){
@@ -195,22 +186,18 @@ function render(items){
       '</div></div>';
   }).join("");
 
-  var prevs = listEl.querySelectorAll('.preview');
-  for (var i=0;i<prevs.length;i++){
-    prevs[i].addEventListener('click', function(e){
+  Array.prototype.forEach.call(listEl.querySelectorAll('.preview'), function(el){
+    el.addEventListener('click', function(e){
       e.preventDefault();
-      var a = e.currentTarget;
-      openPreview(a.getAttribute('data-raw'), a.getAttribute('data-name'), a.getAttribute('data-ext'));
+      openPreview(el.getAttribute('data-raw'), el.getAttribute('data-name'), el.getAttribute('data-ext'));
     }, false);
-  }
-  var nps = listEl.querySelectorAll('.noprev');
-  for (var j=0;j<nps.length;j++){
-    nps[j].addEventListener('click', function(e){
+  });
+  Array.prototype.forEach.call(listEl.querySelectorAll('.noprev'), function(el){
+    el.addEventListener('click', function(e){
       e.preventDefault();
-      var a = e.currentTarget;
-      openNoPreview(a.getAttribute('data-raw'), a.getAttribute('data-name'));
+      openNoPreview(el.getAttribute('data-raw'), el.getAttribute('data-name'));
     }, false);
-  }
+  });
 }
 
 /* ===== Поиск ===== */
@@ -234,7 +221,7 @@ goBtn.addEventListener('click', runSearch);
 /* ===== Модалка ===== */
 var currentBlobURL = null;
 function cleanupBlob(){ if(currentBlobURL){ try{ URL.revokeObjectURL(currentBlobURL); }catch(e){} currentBlobURL=null; } }
-mclose.addEventListener('click', function(){ cleanupBlob(); modal.classList.remove('open'); }, false);
+document.getElementById('mclose').addEventListener('click', function(){ cleanupBlob(); modal.classList.remove('open'); }, false);
 modal.addEventListener('click', function(e){ if(e.target===modal){ cleanupBlob(); modal.classList.remove('open'); }}, false);
 
 function openNoPreview(rawUrl, displayName){
@@ -247,64 +234,27 @@ function openNoPreview(rawUrl, displayName){
   modal.classList.add('open');
 }
 
-/* ===== Предпросмотр ===== */
+/* ===== Предпросмотр — ВСЕГДА через pdf.js для PDF ===== */
 function openPreview(rawUrl, displayName, ext){
   cleanupBlob();
   mtitle.textContent = displayName;
   mdown.href = rawUrl;
-  mopen.removeAttribute('href');
+  mopen.href = rawUrl;
   mstatus.textContent = "Загрузка…";
   mview.innerHTML = '<div class="hint">Загрузка…</div>';
   modal.classList.add('open');
 
   if (ext === "pdf"){
-    // Мобильные — сразу pdf.js (под ширину, без боковой панели)
     var pdfjsBase = "https://mozilla.github.io/pdf.js/web/viewer.html";
     var pdfjs = pdfjsBase + "?file=" + encodeURIComponent(rawUrl) + "#zoom=page-width&pagemode=none&view=FitH";
-
-    if (isMobile){
-      mopen.href = rawUrl;
-      mview.innerHTML = '<iframe src="'+pdfjs+'" allow="fullscreen" allowfullscreen></iframe>';
-      mstatus.textContent = "";
-      return;
-    }
-    // Десктоп: пробуем blob + встроенный viewer
-    fetch(rawUrl, {cache:'no-store'}).then(function(r){
-      if(!r.ok) throw new Error("load fail");
-      return r.blob();
-    }).then(function(blob){
-      var url = URL.createObjectURL(blob);
-      currentBlobURL = url;
-      mopen.href = url;
-      mview.innerHTML =
-        '<object data="'+url+'#view=fitH" type="application/pdf">'+
-          '<embed src="'+url+'#view=fitH" type="application/pdf"/>'+
-          '<div class="hint">Не удалось отобразить PDF. <a class="link" href="'+url+'" target="_blank" rel="noopener">Открыть в новой вкладке</a>.</div>'+
-        '</object>';
-      mstatus.textContent = "";
-    }).catch(function(){
-      // Запасной вариант: Google Docs Viewer
-      var g = "https://docs.google.com/gview?embedded=1&url="+encodeURIComponent(rawUrl);
-      mopen.href = rawUrl;
-      mview.innerHTML = '<iframe src="'+g+'" allowfullscreen></iframe>';
-      mstatus.textContent = "";
-    });
+    mview.innerHTML = '<iframe src="'+pdfjs+'" allow="fullscreen" allowfullscreen></iframe>';
+    mstatus.textContent = "";
     return;
   }
 
   if (["png","jpg","jpeg","webp","gif"].indexOf(ext)>=0){
-    fetch(rawUrl, {cache:'no-store'}).then(function(r){
-      if(!r.ok) throw new Error("img fail");
-      return r.blob();
-    }).then(function(blob){
-      var url = URL.createObjectURL(blob);
-      currentBlobURL = url;
-      mopen.href = url;
-      mview.innerHTML = '<img src="'+url+'" alt="'+escapeHtml(displayName)+'">';
-      mstatus.textContent = "";
-    }).catch(function(){
-      openNoPreview(rawUrl, displayName);
-    });
+    mview.innerHTML = '<img src="'+rawUrl+'" alt="'+escapeHtml(displayName)+'">';
+    mstatus.textContent = "";
     return;
   }
 
@@ -313,7 +263,6 @@ function openPreview(rawUrl, displayName, ext){
       if(!r.ok) throw new Error("text fail");
       return r.text();
     }).then(function(text){
-      mopen.href = rawUrl;
       mview.innerHTML = '<pre>'+escapeHtml(text)+'</pre>';
       mstatus.textContent = "";
     }).catch(function(){
@@ -324,6 +273,9 @@ function openPreview(rawUrl, displayName, ext){
 
   openNoPreview(rawUrl, displayName);
 }
+
+/* Стартовое состояние: фокус на поле */
+qEl.focus();
 </script>
 </body>
 </html>
