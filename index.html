@@ -1,190 +1,93 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Научная библиотека — Липецкий филиал РАНХиГС</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Научная библиотека</title>
   <style>
-    body { font-family: Arial, sans-serif; margin:0; background:#fafafa; }
-    header { background:#fff; border-bottom:4px solid #8b0000; padding:15px 20px; }
-    header h1 { margin:0; font-size:22px; color:#222; }
-    header h2 { margin:5px 0 0; font-size:14px; color:#666; font-weight:normal; }
-
-    .container { max-width:900px; margin:20px auto; padding:0 10px; }
-    .search-box { display:flex; gap:10px; margin-bottom:20px; }
-    .search-box input { flex:1; padding:10px; font-size:16px; border:1px solid #ccc; border-radius:6px; }
-    .search-box button { background:#8b0000; color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; }
-    .search-box button:hover { background:#a00000; }
-
-    .results { display:flex; flex-direction:column; gap:10px; }
-    .card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:15px; }
-    .card h3 { margin:0; font-size:16px; color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .card p { margin:5px 0 0; font-size:13px; color:#555; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .card small { display:block; margin-top:5px; color:#888; }
-    .actions { margin-top:8px; }
-    .actions a { margin-right:15px; color:#a00000; text-decoration:none; font-weight:bold; }
-    .actions a:hover { text-decoration:underline; }
-
-    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1000; align-items:center; justify-content:center; }
-    .modal.open { display:flex; }
-    .modal-content { background:#fff; max-width:95%; max-height:90%; border-radius:8px; padding:15px; overflow:auto; position:relative; }
-    .modal h3 { margin:0 0 10px; font-size:16px; }
-    .modal .close { position:absolute; top:10px; right:10px; background:#aaa; border:none; border-radius:5px; padding:5px 10px; color:#fff; cursor:pointer; }
-    .modal .close:hover { background:#888; }
-    .modal .viewer { margin-top:10px; max-height:70vh; overflow:auto; }
-    .modal img { max-width:100%; height:auto; }
-    .modal pre { background:#f5f5f5; padding:10px; overflow-x:auto; font-size:13px; }
-    .hint { font-size:14px; color:#888; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; }
+    header { background: #900; color: white; padding: 15px; font-size: 20px; }
+    .container { padding: 20px; }
+    .file-card {
+      background: white; padding: 15px; margin: 10px 0;
+      border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    button {
+      background: #900; color: white; border: none;
+      padding: 8px 15px; border-radius: 5px; cursor: pointer;
+    }
+    button:hover { background: #c00; }
+    .viewer {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center;
+    }
+    .viewer-content {
+      background: white; width: 90%; height: 90%; border-radius: 8px; overflow: hidden; position: relative;
+    }
+    .viewer iframe { width: 100%; height: 100%; border: none; }
+    .close-btn {
+      position: absolute; top: 10px; right: 10px;
+      background: #900; color: white; border: none;
+      padding: 6px 12px; border-radius: 4px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>ПРЕЗИДЕНТСКАЯ АКАДЕМИЯ — НАУЧНАЯ БИБЛИОТЕКА</h1>
-    <h2>Липецкий филиал РАНХиГС</h2>
-  </header>
 
-  <div class="container">
-    <div class="search-box">
-      <input id="query" type="text" placeholder="Введите часть имени файла…">
-      <button onclick="searchFiles()">Найти</button>
-    </div>
-    <div class="results" id="results"></div>
-  </div>
-
-  <!-- Модальное окно -->
-  <div class="modal" id="modal">
-    <div class="modal-content">
-      <button class="close" onclick="modal.classList.remove('open')">Закрыть</button>
-      <h3 id="mtitle"></h3>
-      <div class="actions">
-        <a id="mdown" href="#" target="_blank" rel="noopener">Скачать файл</a>
-        <a id="mopen" href="#" target="_blank" rel="noopener">Открыть в новой вкладке</a>
-      </div>
-      <div class="viewer" id="mview"><div class="hint">Предпросмотр</div></div>
-      <div class="hint" id="mstatus"></div>
+<header>📚 Научная библиотека</header>
+<div class="container">
+  <div class="file-card">
+    <span>Корнев А.С. Основы оперативно-розыскной деятельности (A5).pdf</span>
+    <div>
+      <button onclick="viewFile('Корнев А.С. Основы оперативно-розыскной деятельности(A5).pdf')">Смотреть</button>
+      <a href='Корнев А.С. Основы оперативно-розыскной деятельности(A5).pdf' download>
+        <button>Скачать</button>
+      </a>
     </div>
   </div>
 
-  <script>
-    /* === Настройки === */
-    const repo   = "Ranepalip/-";      // owner/repo
-    const branch = "main";
-    const token  = "";                 // если репозиторий приватный — вставьте PAT
+  <div class="file-card">
+    <span>Пример архива.rar</span>
+    <div>
+      <span style="color:red;">Предпросмотр недоступен</span>
+      <a href='Пример архива.rar' download>
+        <button>Скачать</button>
+      </a>
+    </div>
+  </div>
+</div>
 
-    // --- ВАЖНО: корректный базовый путь GitHub Pages ---
-    // На https://ranepalip.github.io/-/   BASE = '/-/'.
-    // Для project pages был бы '/имя-репозитория/'.
-    const parts = location.pathname.split('/').filter(Boolean);
-    const BASE  = parts.length ? `/${parts[0]}/` : '/';
+<div class="viewer" id="viewer">
+  <div class="viewer-content">
+    <button class="close-btn" onclick="closeViewer()">Закрыть</button>
+    <iframe id="viewerFrame"></iframe>
+  </div>
+</div>
 
-    const [owner, repoName] = repo.split('/');
+<script>
+function viewFile(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const encoded = encodeURIComponent(filename);
+  const viewer = document.getElementById('viewer');
+  const frame = document.getElementById('viewerFrame');
 
-    // DOM
-    const modal  = document.getElementById('modal');
-    const mtitle = document.getElementById('mtitle');
-    const mdown  = document.getElementById('mdown');
-    const mopen  = document.getElementById('mopen');
-    const mview  = document.getElementById('mview');
-    const mstatus= document.getElementById('mstatus');
+  if (ext === 'pdf') {
+    frame.src = `pdfjs/web/viewer.html?file=/-/${encoded}`;
+  } else if (['jpg','jpeg','png','gif','txt','html'].includes(ext)) {
+    frame.src = filename;
+  } else {
+    alert("Предпросмотр недоступен, скачайте файл.");
+    return;
+  }
+  viewer.style.display = 'flex';
+}
 
-    function escapeHtml(str){
-      return str.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-    }
+function closeViewer() {
+  document.getElementById('viewer').style.display = 'none';
+  document.getElementById('viewerFrame').src = '';
+}
+</script>
 
-    // Превращаем путь из репозитория в Pages-URL с учётом BASE
-    function toPagesUrl(path){
-      const escaped = path.split('/').map(encodeURIComponent).join('/');
-      return `${location.origin}${BASE}${escaped}`;
-    }
-
-    async function searchFiles(){
-      const q   = document.getElementById('query').value.trim().toLowerCase();
-      const box = document.getElementById('results');
-      box.textContent = 'Загрузка…';
-
-      try{
-        const res = await fetch(
-          `https://api.github.com/repos/${repo}/git/trees/${branch}?recursive=1`,
-          token ? { headers : { Authorization : 'token ' + token } } : {}
-        );
-        const data = await res.json();
-        if(!data.tree) throw new Error('Не удалось получить список файлов');
-
-        const files = data.tree.filter(n => n.type === 'blob');
-        const filtered = q ? files.filter(f => f.path.toLowerCase().includes(q)) : files;
-
-        box.innerHTML = '';
-        if(!filtered.length){ box.textContent = 'Ничего не найдено'; return; }
-
-        filtered.forEach(f=>{
-          const path = f.path;
-          const ext  = path.split('.').pop().toLowerCase();
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <h3>${path.split('/').pop()}</h3>
-            <p>${path}</p>
-            <small>${(f.size/1024).toFixed(2)} KB</small>
-            <div class="actions">
-              <a href="${toPagesUrl(path)}" target="_blank" rel="noopener">Скачать</a>
-              <a href="#" onclick="openPreview('${path}','${ext}');return false;">Смотреть</a>
-            </div>`;
-          box.appendChild(card);
-        });
-
-      }catch(e){
-        box.textContent = 'Ошибка: ' + e.message;
-      }
-    }
-
-    function openInNewTab(url){
-      try{
-        const a = document.createElement('a');
-        a.href = url; a.target = '_blank'; a.rel = 'noopener';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }catch{
-        window.open(url,'_blank','noopener');
-      }
-    }
-
-    function openPreview(path, ext){
-      const fileName = path.split('/').pop();
-      const fileUrl  = toPagesUrl(path); // same-origin ссылка на сам файл
-
-      mtitle.textContent = fileName;
-      mdown.href = fileUrl;
-      mopen.href = fileUrl;
-
-      mstatus.textContent = '';
-      mview.innerHTML = '';
-      modal.classList.add('open');
-
-      if(ext === 'pdf'){
-        // Локальный viewer: https://ranepalip.github.io/-/pdfjs/web/viewer.html
-        const viewer = `${location.origin}${BASE}pdfjs/web/viewer.html`;
-        const viewerUrl = `${viewer}?file=${encodeURIComponent(fileUrl)}#zoom=page-width&pagemode=none`;
-        modal.classList.remove('open'); // на iOS лучше открывать в новой вкладке
-        openInNewTab(viewerUrl);
-        return;
-      }
-
-      if(['png','jpg','jpeg','webp','gif'].includes(ext)){
-        mview.innerHTML = `<img src="${fileUrl}" alt="${escapeHtml(fileName)}">`;
-        return;
-      }
-
-      if(['txt','md','csv','log','html','htm'].includes(ext)){
-        fetch(fileUrl, {cache:'no-store'})
-          .then(r=>r.text())
-          .then(t=> mview.innerHTML = `<pre>${escapeHtml(t)}</pre>`)
-          .catch(()=> mview.innerHTML = `<div class="hint">Ошибка предпросмотра</div>`);
-        return;
-      }
-
-      mview.innerHTML = `<div class="hint">Предпросмотр недоступен, скачайте файл</div>`;
-    }
-  </script>
 </body>
 </html>
