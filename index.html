@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Липецкий филиал РАНХиГС — Поиск файлов</title>
 
-<!-- (необязательно) файл token.js c window.GH_TOKEN="ghp_xxx" чтобы не упираться в лимиты -->
+<!-- (необязательно) token.js — снимет лимиты GitHub API -->
 <script src="token.js" defer></script>
 
-<!-- Полифилы ДОЛЖНЫ грузиться раньше основного кода (старые Safari/iOS) -->
+<!-- Полифилы для iOS Safari ДО основного кода -->
 <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.js"></script>
 
@@ -107,8 +107,8 @@
 
 <script>
 /* ===== Конфиг репозитория ===== */
-var OWNER  = "Ranepalip";   // <- замените на свой логин/организацию
-var REPO   = "-";           // <- замените на свой репозиторий
+var OWNER  = "Ranepalip";   // <- свой логин/организацию
+var REPO   = "-";           // <- свой репозиторий
 var BRANCH = "main";        // <- ветка
 
 /* ===== DOM ===== */
@@ -132,32 +132,26 @@ function human(n){
   do{ n/=1024; i++; } while(n>=1024 && i<u.length-1);
   return n.toFixed(2)+" "+u[i];
 }
-
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,function(m){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]);});}
 
 /* ===== GitHub API ===== */
 var treeCache = null;
-
 function fetchJson(url){
   var headers = { "Accept":"application/vnd.github+json" };
   if (window.GH_TOKEN) headers["Authorization"] = "Bearer " + window.GH_TOKEN;
-  return fetch(url, { headers: headers, cache: 'no-store', mode: 'cors' })
-    .then(function(r){
-      if(!r.ok) return r.text().then(function(t){throw new Error(r.status+" "+r.statusText+"\n"+t);});
-      return r.json();
-    });
+  return fetch(url, { headers, cache:'no-store', mode:'cors' })
+    .then(function(r){ if(!r.ok) return r.text().then(t=>{throw new Error(r.status+" "+r.statusText+"\n"+t)}); return r.json();});
 }
-
 function getTree(){
   if (treeCache) return Promise.resolve(treeCache);
   metaEl.textContent = "Загрузка индекса…";
   var url = "https://api.github.com/repos/"+OWNER+"/"+REPO+"/git/trees/"+BRANCH+"?recursive=1";
   return fetchJson(url).then(function(data){
-    treeCache = (data.tree || []).filter(function(n){ return n.type === "blob"; });
+    treeCache = (data.tree||[]).filter(function(n){return n.type==="blob";});
     metaEl.textContent = "";
     return treeCache;
   }).catch(function(err){
-    metaEl.textContent = "Ошибка GitHub API: "+err.message+"\nПопробуйте позже или добавить токен в token.js";
+    metaEl.textContent = "Ошибка GitHub API: "+err.message+"\nПопробуйте позже или добавьте токен в token.js";
     throw err;
   });
 }
@@ -169,7 +163,7 @@ function render(items){
     var raw  = "https://raw.githubusercontent.com/"+OWNER+"/"+REPO+"/"+BRANCH+"/"+f.path;
     var name = f.name || f.path.split("/").pop();
     var ext  = name.toLowerCase().split(".").pop();
-    var previewable = ["pdf","png","jpg","jpeg","webp","gif","txt","md","csv","log","html","htm"].indexOf(ext) >= 0;
+    var previewable = ["pdf","png","jpg","jpeg","webp","gif","txt","md","csv","log","html","htm"].indexOf(ext)>=0;
     return '<div class="item">'+
       '<div>'+
         '<div class="name" title="'+escapeHtml(f.path)+'">'+escapeHtml(name)+'</div>'+
@@ -224,12 +218,14 @@ function cleanupBlob(){ if(currentBlobURL){ try{ URL.revokeObjectURL(currentBlob
 document.getElementById('mclose').addEventListener('click', function(){ cleanupBlob(); modal.classList.remove('open'); }, false);
 modal.addEventListener('click', function(e){ if(e.target===modal){ cleanupBlob(); modal.classList.remove('open'); }}, false);
 
-/* ==== Детектор iOS Safari ==== */
-function isIOSSafari() {
-  const ua = navigator.userAgent || "";
-  const iOS = /iPad|iPhone|iPod/.test(ua);
-  const safari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
-  return iOS && safari;
+/* ==== Детекторы iOS ==== */
+function isIOS(){
+  var ua = navigator.userAgent||"";
+  return /iPad|iPhone|iPod/.test(ua);
+}
+function isIOSSafari(){
+  var ua=navigator.userAgent||"";
+  return isIOS() && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
 }
 
 /* ===== Предпросмотр ===== */
@@ -239,8 +235,25 @@ function openNoPreview(rawUrl, displayName){
   mdown.href = rawUrl;
   mopen.href = rawUrl;
   mstatus.textContent = "";
-  mview.innerHTML = '<div class="hint">Предпросмотр этого типа файла недоступен. <br>Пожалуйста, <a class="link" href="'+rawUrl+'" target="_blank" rel="noopener">скачайте файл</a>.</div>';
+  mview.innerHTML = '<div class="hint">Предпросмотр этого типа файла недоступен. '+
+                    'Пожалуйста, <a class="link" href="'+rawUrl+'" target="_blank" rel="noopener">скачайте файл</a>.</div>';
   modal.classList.add('open');
+}
+
+/* ГЛАВНЫЙ фикс: на iPhone PDF сразу открываем НОВОЙ ВКЛАДКОЙ */
+function openPDFonIOS(rawUrl){
+  try{
+    var a = document.createElement('a');
+    a.href = rawUrl;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }catch(e){
+    // запасной вариант
+    window.open(rawUrl,'_blank');
+  }
 }
 
 function openPreview(rawUrl, displayName, ext){
@@ -254,17 +267,13 @@ function openPreview(rawUrl, displayName, ext){
 
   // PDF
   if (ext === "pdf") {
-    if (isIOSSafari()) {
-      // На iOS Safari используем нативный просмотр PDF
-      mview.innerHTML =
-        '<object data="'+rawUrl+'#view=FitH" type="application/pdf" '+
-        'style="width:100%;height:80vh;"></object>'+
-        '<div class="hint">Если документ не отобразился, '+
-        '<a class="link" href="'+rawUrl+'" target="_blank" rel="noopener">откройте в новой вкладке</a>.</div>';
-      mstatus.textContent = "";
+    if (isIOS()) {
+      // iPhone/iPad: надёжно открываем в новой вкладке — без «пустого листа»
+      modal.classList.remove('open');
+      openPDFonIOS(rawUrl);
       return;
     } else {
-      // На ПК/Android — через pdf.js
+      // ПК/Android: pdf.js во фрейме
       var pdfjsBase = "https://mozilla.github.io/pdf.js/web/viewer.html";
       var pdfjs = pdfjsBase + "?file=" + encodeURIComponent(rawUrl) + "#zoom=page-width&pagemode=none&view=FitH";
       mview.innerHTML = '<iframe src="'+pdfjs+'" allow="fullscreen" allowfullscreen></iframe>';
@@ -296,7 +305,7 @@ function openPreview(rawUrl, displayName, ext){
   openNoPreview(rawUrl, displayName);
 }
 
-/* Стартовое состояние: фокус на поле */
+/* Фокус в поле при загрузке */
 qEl.focus();
 </script>
 </body>
