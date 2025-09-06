@@ -1,135 +1,298 @@
-<script>
-  const OWNER  = 'Ranepalip';
-  const REPO   = '-';
-  const BRANCH = 'main';
-
-  // Базовый префикс проекта (например, "/-/" для project pages)
-  // Работает и если сайт в корне (будет "/")
-  const BASE = (location.pathname.match(/^\/[^/]+\/?/) || ['/'])[0];
-  // Пример: BASE === "/-/" -> файл лежит по "/-/Имя.pdf"
-  // viewer лежит по "/-/pdfjs/web/viewer.html"
-
-  const filesEl = document.getElementById('files');
-  const qEl = document.getElementById('q');
-  let allFiles = [];
-
-  function isIOS() {
-    const ua = navigator.userAgent;
-    const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-    return /iPad|iPhone|iPod/.test(ua) || iPadOS;
-  }
-
-  async function reloadFiles() {
-    filesEl.innerHTML = '<div class="empty">Загружаю список…</div>';
-    try {
-      const url = `https://api.github.com/repos/${OWNER}/${encodeURIComponent(REPO)}/contents?ref=${BRANCH}`;
-      const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' }});
-      if (!res.ok) throw new Error('GitHub API error: ' + res.status);
-      const data = await res.json();
-      allFiles = data.filter(x => x.type === 'file');
-      applyFilter();
-    } catch (e) {
-      filesEl.innerHTML = `<div class="empty">Не удалось получить список файлов. Ошибка: ${e.message}</div>`;
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Научная библиотека — Липецкий филиал РАНХиГС</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='1em' font-size='96'%3E📚%3C/text%3E%3C/svg%3E">
+  <style>
+    :root{
+      --accent:#a50e0e;
+      --text:#1d1f23;
+      --muted:#6b7280;
+      --bg:#f6f7fb;
+      --card:#fff;
+      --border:#e5e7eb;
+      --btn:#e11d48;
+      --btn-hover:#be123c;
     }
-  }
-
-  function applyFilter() {
-    const term = (qEl.value || '').trim().toLowerCase();
-    const list = !term ? allFiles : allFiles.filter(it => it.name.toLowerCase().includes(term));
-    if (!list.length) { filesEl.innerHTML = '<div class="empty">Ничего не найдено</div>'; return; }
-    const frag = document.createDocumentFragment();
-    list.forEach(f => frag.appendChild(renderFileRow(f)));
-    filesEl.innerHTML = ''; filesEl.appendChild(frag);
-  }
-
-  function renderFileRow(file) {
-    const name = file.name;
-    const ext  = name.split('.').pop().toLowerCase();
-
-    // Полные корректные URL c учётом префикса проекта
-    const fileUrl   = BASE + encodeURIComponent(name);
-    const viewerUrl = BASE + 'pdfjs/web/viewer.html?file=' + encodeURIComponent(fileUrl);
-
-    const row = document.createElement('div');
-    row.className = 'file-card';
-
-    const title = document.createElement('div');
-    title.className = 'file-title';
-    title.textContent = name;
-
-    const actions = document.createElement('div');
-    actions.className = 'actions';
-
-    if (ext === 'pdf') {
-      const watch = document.createElement('button');
-      watch.className = 'btn';
-      watch.textContent = 'Смотреть';
-      watch.onclick = () => openPdf(viewerUrl);
-      actions.appendChild(watch);
-
-      const dl = document.createElement('a');
-      dl.className = 'btn secondary';
-      dl.href = fileUrl;
-      dl.download = name;
-      dl.textContent = 'Скачать';
-      actions.appendChild(dl);
-
-    } else if (['jpg','jpeg','png','gif','txt','html'].includes(ext)) {
-      const watch = document.createElement('button');
-      watch.className = 'btn';
-      watch.textContent = 'Смотреть';
-      watch.onclick = () => openSimple(fileUrl);
-      actions.appendChild(watch);
-
-      const dl = document.createElement('a');
-      dl.className = 'btn secondary';
-      dl.href = fileUrl;
-      dl.download = name;
-      dl.textContent = 'Скачать';
-      actions.appendChild(dl);
-
-    } else {
-      const hint = document.createElement('span');
-      hint.className = 'hint';
-      hint.textContent = 'Предпросмотр недоступен';
-      actions.appendChild(hint);
-
-      const dl = document.createElement('a');
-      dl.className = 'btn secondary';
-      dl.href = fileUrl;
-      dl.download = name;
-      dl.textContent = 'Скачать';
-      actions.appendChild(dl);
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font:16px/1.5 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:var(--bg);
+    }
+    /* Header */
+    .topbar{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      background:var(--accent);
+      color:#fff;
+      padding:14px 18px;
+      position:sticky;top:0;z-index:10;
+      box-shadow:0 2px 8px rgba(0,0,0,.15);
+    }
+    .logo{font-weight:700;font-size:18px}
+    .subtitle{font-size:12px;opacity:.85}
+    .container{max-width:1080px;margin:18px auto;padding:0 16px}
+    /* Search */
+    .search{
+      display:flex;gap:10px;align-items:center;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:12px;padding:12px 14px;
+      box-shadow:0 3px 16px rgba(0,0,0,.05);
+      position:sticky; top:62px; z-index:8;
+    }
+    .search input{
+      flex:1 1 auto;
+      border:none; outline:none;
+      font-size:15px;
+      background:transparent;
+    }
+    .search .btn{
+      white-space:nowrap;
     }
 
-    row.appendChild(title);
-    row.appendChild(actions);
-    return row;
-  }
+    /* List */
+    .file-card{
+      display:flex;align-items:center;justify-content:space-between;
+      gap:10px; padding:14px 16px;
+      margin-top:12px;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:12px;
+      box-shadow:0 2px 12px rgba(0,0,0,.05);
+    }
+    .file-title{
+      min-width:0;
+      font-weight:600;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .actions{display:flex; gap:10px;flex-wrap:wrap}
+    .hint{color:var(--muted);font-size:14px;align-self:center;margin-right:6px}
 
-  function openPdf(viewerUrl) {
-    if (isIOS()) { window.open(viewerUrl, '_blank', 'noopener'); return; }
-    openInModal(viewerUrl);
-  }
+    /* Buttons */
+    .btn{
+      background:var(--btn);
+      color:#fff; border:none; border-radius:10px;
+      padding:10px 14px; cursor:pointer;
+      font-weight:600; font-size:14px;
+      transition:.15s;
+    }
+    .btn:hover{background:var(--btn-hover)}
+    .btn.secondary{
+      background:#fff; color:var(--btn); border:1px solid var(--btn);
+    }
+    .btn.secondary:hover{background:#fff0f3}
 
-  function openSimple(url) {
-    if (isIOS()) { window.open(url, '_blank', 'noopener'); return; }
-    openInModal(url);
-  }
+    /* Empty / message */
+    .empty{padding:24px;color:var(--muted);text-align:center}
 
-  function openInModal(url) {
-    const viewer = document.getElementById('viewer');
-    const frame  = document.getElementById('viewerFrame');
-    viewer.style.display = 'flex';
-    setTimeout(() => frame.src = url, 30);
-  }
+    /* Modal viewer */
+    .viewer{
+      position:fixed; inset:0; display:none;
+      background:rgba(17,24,39,.8);
+      align-items:center; justify-content:center;
+      z-index:50; padding:12px;
+    }
+    .viewer__box{
+      width:100%; height:100%;
+      background:#111827;
+      display:flex;flex-direction:column; border-radius:12px; overflow:hidden;
+    }
+    .viewer__head{
+      padding:10px 12px; background:#0a0f1c; color:#fff;
+      display:flex;justify-content:space-between; align-items:center;
+    }
+    .viewer__frame{flex:1 1 auto; border:none; width:100%}
+    .viewer__close{
+      background:#ef4444;border:none;color:#fff;border-radius:8px;
+      padding:8px 12px;font-weight:700;cursor:pointer;
+    }
 
-  function closeViewer() {
-    const viewer = document.getElementById('viewer');
-    const frame  = document.getElementById('viewerFrame');
-    frame.src = 'about:blank';
-    viewer.style.display = 'none';
-  }
+    @media (max-width:640px){
+      .file-title{font-size:15px}
+      .btn{padding:9px 12px}
+      .logo{font-size:16px}
+      .subtitle{display:block}
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="topbar">
+    <div class="logo">ПРЕЗИДЕНТСКАЯ АКАДЕМИЯ — Научная библиотека</div>
+    <div class="subtitle">Липецкий филиал РАНХиГС</div>
+  </header>
 
-  reloadFiles();
-</script>
+  <main class="container">
+    <!-- Search -->
+    <div class="search">
+      <input id="q" type="search" placeholder="Поиск по названию файла…" oninput="applyFilter()">
+      <button class="btn" onclick="applyFilter()">Найти</button>
+    </div>
+
+    <!-- Список -->
+    <div id="files" class="list"></div>
+  </main>
+
+  <!-- Модальный PDF/просмотр -->
+  <section id="viewer" class="viewer" aria-hidden="true">
+    <div class="viewer__box">
+      <div class="viewer__head">
+        <strong>Просмотр файла</strong>
+        <button class="viewer__close" onclick="closeViewer()">Закрыть</button>
+      </div>
+      <iframe id="viewerFrame" class="viewer__frame" title="Просмотр"></iframe>
+    </div>
+  </section>
+
+  <script>
+    /* === Настройки репозитория === */
+    const OWNER  = 'Ranepalip';  // имя пользователя/организации
+    const REPO   = '-';          // имя репозитория
+    const BRANCH = 'main';
+
+    /* === Вспомогательные === */
+    const filesEl = document.getElementById('files');
+    const qEl     = document.getElementById('q');
+    let allFiles  = [];
+
+    // Абсолютный URL относительно текущего домена Pages.
+    // new URL сам добавит /-/, /repo/ и прочие префиксы.
+    const abs = (pathOrQuery) => new URL(pathOrQuery, window.location).href;
+
+    // iOS/Safari – открываем в новой вкладке
+    function isIOS() {
+      const ua = navigator.userAgent || '';
+      const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+      return /iPad|iPhone|iPod/.test(ua) || iPadOS;
+    }
+
+    /* === Получение списка файлов === */
+    async function reloadFiles() {
+      filesEl.innerHTML = '<div class="empty">Загружаю список…</div>';
+      try {
+        const url = `https://api.github.com/repos/${OWNER}/${encodeURIComponent(REPO)}/contents?ref=${BRANCH}`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } });
+        if (!res.ok) throw new Error('GitHub API: ' + res.status);
+        const data = await res.json();
+        allFiles = data.filter(x => x.type === 'file');
+        applyFilter();
+      } catch (err) {
+        filesEl.innerHTML = `<div class="empty">Не удалось получить список файлов. ${err.message}</div>`;
+      }
+    }
+
+    /* === Фильтрация/отрисовка === */
+    function applyFilter() {
+      const term = (qEl.value || '').trim().toLowerCase();
+      const list = !term ? allFiles : allFiles.filter(f => f.name.toLowerCase().includes(term));
+      if (!list.length) {
+        filesEl.innerHTML = '<div class="empty">Ничего не найдено</div>';
+        return;
+      }
+      const frag = document.createDocumentFragment();
+      list.forEach(f => frag.appendChild(renderFileRow(f)));
+      filesEl.innerHTML = '';
+      filesEl.appendChild(frag);
+    }
+
+    function renderFileRow(file) {
+      const name = file.name;
+      const ext  = name.split('.').pop().toLowerCase();
+
+      // URL исходника (всегда абсолютный, чтобы не получить 404 без /-/)
+      const fileUrl   = abs(encodeURIComponent(name));
+      // URL PDF-просмотрщика
+      const viewerUrl = abs('pdfjs/web/viewer.html') + '?file=' + encodeURIComponent(fileUrl);
+
+      const row = document.createElement('div');
+      row.className = 'file-card';
+
+      const title = document.createElement('div');
+      title.className = 'file-title';
+      title.textContent = name;
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      if (ext === 'pdf') {
+        const watch = document.createElement('button');
+        watch.className = 'btn';
+        watch.textContent = 'Смотреть';
+        watch.onclick = () => openPdf(viewerUrl);
+        actions.appendChild(watch);
+
+        const dl = document.createElement('a');
+        dl.className = 'btn secondary';
+        dl.href = fileUrl; dl.download = name; dl.textContent = 'Скачать';
+        actions.appendChild(dl);
+
+      } else if (['jpg','jpeg','png','gif','txt','html'].includes(ext)) {
+        const watch = document.createElement('button');
+        watch.className = 'btn';
+        watch.textContent = 'Смотреть';
+        watch.onclick = () => openSimple(fileUrl);
+        actions.appendChild(watch);
+
+        const dl = document.createElement('a');
+        dl.className = 'btn secondary';
+        dl.href = fileUrl; dl.download = name; dl.textContent = 'Скачать';
+        actions.appendChild(dl);
+
+      } else {
+        const hint = document.createElement('span');
+        hint.className = 'hint';
+        hint.textContent = 'Предпросмотр недоступен';
+        actions.appendChild(hint);
+
+        const dl = document.createElement('a');
+        dl.className = 'btn secondary';
+        dl.href = fileUrl; dl.download = name; dl.textContent = 'Скачать';
+        actions.appendChild(dl);
+      }
+
+      row.appendChild(title);
+      row.appendChild(actions);
+      return row;
+    }
+
+    /* === Открытие/закрытие просмотрщика === */
+    function openPdf(viewerUrl) {
+      if (isIOS()) {           // Safari/iOS — отдельная вкладка
+        window.open(viewerUrl, '_blank', 'noopener');
+        return;
+      }
+      openInModal(viewerUrl);
+    }
+    function openSimple(url) {
+      if (isIOS()) {
+        window.open(url, '_blank', 'noopener');
+        return;
+      }
+      openInModal(url);
+    }
+    function openInModal(url) {
+      const viewer = document.getElementById('viewer');
+      const frame  = document.getElementById('viewerFrame');
+      viewer.style.display = 'flex';
+      // небольшая задержка — чтобы не «бить» Safari
+      setTimeout(() => frame.src = url, 40);
+    }
+    function closeViewer() {
+      const viewer = document.getElementById('viewer');
+      const frame  = document.getElementById('viewerFrame');
+      frame.src = 'about:blank';
+      viewer.style.display = 'none';
+    }
+
+    // Старт
+    reloadFiles();
+  </script>
+</body>
+</html>
