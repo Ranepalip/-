@@ -67,9 +67,15 @@
 
   <script>
     /* === Настройки === */
-    const repo   = "Ranepalip/-";   // owner/repo
+    const repo   = "Ranepalip/-";      // owner/repo
     const branch = "main";
-    const token  = "";              // если репозиторий приватный — вставьте PAT
+    const token  = "";                 // если репозиторий приватный — вставьте PAT
+
+    // --- ВАЖНО: корректный базовый путь GitHub Pages ---
+    // На https://ranepalip.github.io/-/   BASE = '/-/'.
+    // Для project pages был бы '/имя-репозитория/'.
+    const parts = location.pathname.split('/').filter(Boolean);
+    const BASE  = parts.length ? `/${parts[0]}/` : '/';
 
     const [owner, repoName] = repo.split('/');
 
@@ -85,10 +91,10 @@
       return str.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
     }
 
-    // Превращаем путь репозитория в URL на GitHub Pages (same-origin)
+    // Превращаем путь из репозитория в Pages-URL с учётом BASE
     function toPagesUrl(path){
       const escaped = path.split('/').map(encodeURIComponent).join('/');
-      return `${location.origin}/${escaped}`;
+      return `${location.origin}${BASE}${escaped}`;
     }
 
     async function searchFiles(){
@@ -148,7 +154,7 @@
       const fileUrl  = toPagesUrl(path); // same-origin ссылка на сам файл
 
       mtitle.textContent = fileName;
-      mdown.href = fileUrl;  // скачивание — тоже с Pages
+      mdown.href = fileUrl;
       mopen.href = fileUrl;
 
       mstatus.textContent = '';
@@ -156,10 +162,10 @@
       modal.classList.add('open');
 
       if(ext === 'pdf'){
-        // ЛОКАЛЬНЫЙ viewer из твоего же репозитория/Pages
-        const viewer = `${location.origin}/pdfjs/web/viewer.html`;
+        // Локальный viewer: https://ranepalip.github.io/-/pdfjs/web/viewer.html
+        const viewer = `${location.origin}${BASE}pdfjs/web/viewer.html`;
         const viewerUrl = `${viewer}?file=${encodeURIComponent(fileUrl)}#zoom=page-width&pagemode=none`;
-        modal.classList.remove('open'); // открываем в новой вкладке
+        modal.classList.remove('open'); // на iOS лучше открывать в новой вкладке
         openInNewTab(viewerUrl);
         return;
       }
