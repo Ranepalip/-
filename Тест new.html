@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Липецкий филиал РАНХиГС — Поиск файлов</title>
+<style>
+  :root{
+    --bg:#ffffff;--brand:#9d1d20;--ink:#202124;--muted:#646a73;
+    --panel:#f7f7f8;--border:#e4e6ea;--link:#b01e22;
+  }
+  html,body{height:100%}
+  body{margin:0;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans";color:var(--ink);background:var(--bg)}
+
+  .topbar{display:flex;align-items:center;gap:24px;padding:18px 28px;background:#fff;border-bottom:1px solid var(--border)}
+  .crest{width:56px;height:56px;border-radius:6px;background:#f0f2f6 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="%23e9ecef"/><text x="50%" y="56%" font-size="26" text-anchor="middle" fill="%239d1d20" font-family="Georgia,serif">Р</text></svg>') center/65% no-repeat;border:1px solid var(--border)}
+  .brand{display:flex;flex-direction:column;gap:4px}
+  .brand .line1{font-weight:700;letter-spacing:.04em;color:var(--brand)}
+  .brand .line1 span{color:var(--ink)}
+  .brand .line2{font-weight:700;font-size:28px;letter-spacing:.02em}
+  .brand .line3{color:var(--muted);font-weight:600}
+  .redbar{height:12px;background:var(--brand)}
+
+  .wrap{max-width:1080px;margin:36px auto;padding:0 20px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,.05)}
+  .card h2{margin:0 0 10px;font-size:22px}
+  .searchbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .searchbar input[type="search"]{flex:1;min-width:260px;border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:#fff;color:var(--ink)}
+  .btn{border:0;border-radius:10px;padding:12px 18px;background:var(--link);color:#fff;font-weight:700;cursor:pointer}
+  .meta{margin-top:8px;color:var(--muted);min-height:22px;white-space:pre-wrap}
+  .results{margin-top:16px;display:grid;grid-template-columns:1fr;gap:10px}
+  .item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:560px}
+  .meta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;color:var(--muted);font-size:13px}
+  .meta-chip{border:1px solid var(--border);padding:2px 8px;border-radius:999px;background:#fafbfc}
+  .actions a{color:var(--link);text-decoration:none;font-weight:700;margin-left:14px}
+  .empty{padding:14px;border:1px dashed var(--border);border-radius:10px;color:var(--muted);background:#fff}
+
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:28px;z-index:50}
+  .modal.open{display:flex}
+  .modal-card{background:#fff;max-width:1080px;width:100%;max-height:90vh;border-radius:12px;border:1px solid var(--border);display:flex;flex-direction:column}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+  .modal-title{font-weight:700}
+  .close{border:0;background:#f3f4f6;border-radius:8px;padding:8px 10px;cursor:pointer}
+  .toolbar-mini{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .link{color:var(--link);text-decoration:none;font-weight:700}
+  .viewer{position:relative;overflow:auto}
+  .viewer .hint{padding:16px;color:var(--muted)}
+  .viewer iframe,.viewer img,.viewer object,.viewer embed{width:100%;height:80vh;border:0;display:block}
+  .viewer pre{white-space:pre-wrap;margin:0;padding:16px}
+
+  @media (max-width: 768px){
+    .topbar{flex-direction:column;align-items:flex-start;gap:10px;padding:14px}
+    .brand .line2{font-size:22px}
+    .wrap{margin:20px auto;padding:0 10px}
+    .card{padding:14px}
+    .searchbar{flex-direction:column;gap:8px}
+    .searchbar input[type="search"], .btn{width:100%;box-sizing:border-box}
+    .name{max-width:100%;white-space:normal}
+    .item{flex-direction:column;align-items:flex-start}
+    .actions{margin-top:8px}
+    .modal-card{max-height:95vh;border-radius:0;width:100%}
+    .viewer iframe,.viewer img,.viewer object,.viewer embed{height:72vh}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="crest" aria-hidden="true"></div>
+  <div class="brand">
+    <div class="line1">ПРЕЗИДЕНТСКАЯ <span>АКАДЕМИЯ</span></div>
+    <div class="line2">НАУЧНАЯ БИБЛИОТЕКА</div>
+    <div class="line3">Липецкий филиал РАНХиГС</div>
+  </div>
+</header>
+<div class="redbar" aria-hidden="true"></div>
+
+<main class="wrap">
+  <section class="card">
+    <h2>Поиск файлов</h2>
+    <div class="searchbar">
+      <input id="q" type="search" inputmode="search" placeholder="Введите часть имени файла… (минимум 2 символа)" autocomplete="off" />
+      <button id="go" class="btn">Найти</button>
+    </div>
+    <div id="meta" class="meta"></div>
+    <div id="list" class="results"></div>
+  </section>
+</main>
+
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title" id="mtitle">Предпросмотр</div>
+      <button class="close" id="mclose">Закрыть</button>
+    </div>
+    <div class="toolbar-mini">
+      <a id="mdownload" class="link" href="#" download>Скачать файл</a>
+      <a id="mopen" class="link" href="#" target="_blank" rel="noopener">Открыть в новой вкладке</a>
+      <span id="mstatus" class="meta"></span>
+    </div>
+    <div class="viewer" id="mview"><div class="hint">Откройте файл для предпросмотра.</div></div>
+  </div>
+</div>
+
+<script>
+const OWNER  = "Ranepalip";
+const REPO   = "-";
+const BRANCH = "main";
+
+const metaEl  = document.getElementById('meta');
+const listEl  = document.getElementById('list');
+const qEl     = document.getElementById('q');
+const goBtn   = document.getElementById('go');
+
+let treeCache = null;
+async function getTree(){
+  if (treeCache) return treeCache;
+  metaEl.textContent = "Загрузка индекса…";
+  const url = `https://api.github.com/repos/${OWNER}/${REPO}/git/trees/${BRANCH}?recursive=1`;
+  const res = await fetch(url);
+  if(!res.ok){
+    const t = await res.text().catch(()=> "");
+    metaEl.textContent = `Ошибка GitHub API: ${res.status} ${res.statusText}\n${t}`;
+    throw new Error("GitHub API error");
+  }
+  const data = await res.json();
+  treeCache = (data.tree || []).filter(n => n.type === "blob");
+  metaEl.textContent = "";
+  return treeCache;
+}
+function human(n){ if(!Number.isFinite(n)) return ""; if(n<1024) return n+" B"; const u=["KB","MB","GB","TB"]; let i=-1; do{n/=1024;i++;}while(n>=1024&&i<u.length-1); return n.toFixed(2)+" "+u[i]; }
+
+function render(items){
+  if (!items.length){ listEl.innerHTML = `<div class="empty">Ничего не найдено</div>`; return; }
+  listEl.innerHTML = items.map(f=>{
+    const raw  = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${f.path}`;
+    const name = f.name || f.path.split("/").pop();
+    const ext  = name.toLowerCase().split(".").pop();
+    const previewable = ["pdf","png","jpg","jpeg","webp","gif","txt","md","csv","log","html","htm"].includes(ext);
+    return `<div class="item">
+      <div>
+        <div class="name" title="${f.path}">${name}</div>
+        <div class="meta-row">
+          <span class="meta-chip">${f.path}</span>
+          ${f.size?`<span class="meta-chip">${human(f.size)}</span>`:""}
+        </div>
+      </div>
+      <div class="actions">
+        <a href="${raw}" download>Скачать</a>
+        ${previewable
+          ? `<a href="#" class="preview" data-raw="${raw}" data-name="${name}" data-ext="${ext}">Смотреть</a>`
+          : `<a href="#" class="noprev" data-raw="${raw}" data-name="${name}">Смотреть</a>`}
+      </div>
+    </div>`;
+  }).join("");
+
+  listEl.querySelectorAll('.preview').forEach(a=>{
+    a.addEventListener('click', (e)=>{
+      e.preventDefault();
+      openPreview(a.dataset.raw, a.dataset.name, a.dataset.ext);
+    });
+  });
+  listEl.querySelectorAll('.noprev').forEach(a=>{
+    a.addEventListener('click', (e)=>{
+      e.preventDefault();
+      openNoPreview(a.dataset.raw, a.dataset.name);
+    });
+  });
+}
+
+async function runSearch(){
+  const term = qEl.value.trim().toLowerCase();
+  if (term.length < 2){ metaEl.textContent = ""; listEl.innerHTML = ""; return; }
+  await Promise.resolve();
+  const tree = await getTree();
+  const filtered = tree
+    .map(t => ({ path:t.path, size:t.size, name:t.path.split("/").pop() }))
+    .filter(f => f.name.toLowerCase().includes(term));
+  render(filtered);
+}
+qEl.addEventListener('input', runSearch, {passive:true});
+qEl.addEventListener('keydown', e=>{ if (e.key==='Enter'){ e.preventDefault(); runSearch(); }});
+goBtn.addEventListener('click', runSearch);
+
+/* ======= МОДАЛЬНОЕ ОКНО ======= */
+const modal   = document.getElementById('modal');
+const mtitle  = document.getElementById('mtitle');
+const mclose  = document.getElementById('mclose');
+const mview   = document.getElementById('mview');
+const mdown   = document.getElementById('mdownload');
+const mopen   = document.getElementById('mopen');
+const mstatus = document.getElementById('mstatus');
+
+let currentBlobURL = null;
+function cleanupBlob(){ if(currentBlobURL){ URL.revokeObjectURL(currentBlobURL); currentBlobURL=null; } }
+mclose.addEventListener('click', ()=>{ cleanupBlob(); modal.classList.remove('open'); });
+modal.addEventListener('click', e=>{ if(e.target===modal){ cleanupBlob(); modal.classList.remove('open'); }});
+
+/* мобильное определение */
+const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+/* Когда нет предпросмотра */
+function openNoPreview(rawUrl, displayName){
+  cleanupBlob();
+  mtitle.textContent = displayName;
+  mdown.href = rawUrl;
+  mopen.href = rawUrl;
+  mstatus.textContent = "";
+  mview.innerHTML = `<div class="hint">
+    Предпросмотр этого типа файла недоступен.
+    <br>Пожалуйста, <a class="link" href="${rawUrl}" download>скачайте файл</a>.
+  </div>`;
+  modal.classList.add('open');
+}
+
+/* Предпросмотр с устойчивым режимом для PDF на мобильных */
+async function openPreview(rawUrl, displayName, ext){
+  try{
+    cleanupBlob();
+    mtitle.textContent = displayName;
+    mdown.href = rawUrl;
+    mopen.removeAttribute('href');
+    mstatus.textContent = "Загрузка…";
+    mview.innerHTML = `<div class="hint">Загрузка…</div>`;
+    modal.classList.add('open');
+
+    if (ext === "pdf"){
+      // Мобильный режим — через pdf.js (стабильно в Android/iOS)
+      if (isMobile){
+        const pdfjs = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(rawUrl)}`;
+        mopen.href = rawUrl; // запасной вариант
+        mview.innerHTML = `<iframe src="${pdfjs}" allowfullscreen></iframe>`;
+        mstatus.textContent = "";
+        return;
+      }
+
+      // Десктоп — быстрый вариант через Blob + object
+      const res = await fetch(rawUrl, {cache:'no-store'});
+      if(!res.ok){ throw new Error("load fail"); }
+      const buf  = await res.arrayBuffer();
+      const blob = new Blob([buf], {type:"application/pdf"});
+      const url  = URL.createObjectURL(blob);
+      currentBlobURL = url;
+      mopen.href = url;
+      mview.innerHTML =
+        `<object data="${url}#view=fitH" type="application/pdf">
+           <embed src="${url}#view=fitH" type="application/pdf"/>
+           <div class="hint">
+             Не удалось отобразить PDF в окне этого браузера.
+             <a class="link" href="${url}" target="_blank" rel="noopener">Открыть в новой вкладке</a>.
+           </div>
+         </object>`;
+      mstatus.textContent = "";
+      return;
+    }
+
+    // Картинки
+    if (["png","jpg","jpeg","webp","gif"].includes(ext)){
+      const res = await fetch(rawUrl, {cache:'no-store'});
+      if(!res.ok){ throw new Error("img load fail"); }
+      const buf  = await res.arrayBuffer();
+      const mime = ({png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",webp:"image/webp",gif:"image/gif"})[ext] || "image/*";
+      const blob = new Blob([buf], {type:mime});
+      const url  = URL.createObjectURL(blob);
+      currentBlobURL = url;
+      mopen.href = url;
+      mview.innerHTML = `<img src="${url}" alt="${displayName}">`;
+      mstatus.textContent = "";
+      return;
+    }
+
+    // Текстовые
+    if (["txt","md","csv","log","html","htm"].includes(ext)){
+      const res = await fetch(rawUrl, {cache:'no-store'});
+      if(!res.ok){ throw new Error("text load fail"); }
+      const text = await res.text();
+      mopen.href = rawUrl;
+      mview.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
+      mstatus.textContent = "";
+      return;
+    }
+
+    openNoPreview(rawUrl, displayName);
+  }catch(e){
+    console.warn("preview fallback:", e);
+    // Абсолютный запасной вариант для PDF — Google Docs Viewer
+    if (ext === "pdf"){
+      const gview = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(rawUrl)}`;
+      mopen.href = rawUrl;
+      mview.innerHTML = `<iframe src="${gview}" allowfullscreen></iframe>`;
+      mstatus.textContent = "";
+      return;
+    }
+    openNoPreview(rawUrl, displayName);
+  }
+}
+
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));}
+</script>
+</body>
+</html>
