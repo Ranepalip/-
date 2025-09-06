@@ -8,7 +8,7 @@
 <!-- (необязательно) файл token.js c window.GH_TOKEN="ghp_xxx" чтобы не упираться в лимиты -->
 <script src="token.js" defer></script>
 
-<!-- Полифилы ДОЛЖНЫ грузиться раньше основного кода на старых Safari -->
+<!-- Полифилы ДОЛЖНЫ грузиться раньше основного кода (старые Safari/iOS) -->
 <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.js"></script>
 
@@ -224,17 +224,25 @@ function cleanupBlob(){ if(currentBlobURL){ try{ URL.revokeObjectURL(currentBlob
 document.getElementById('mclose').addEventListener('click', function(){ cleanupBlob(); modal.classList.remove('open'); }, false);
 modal.addEventListener('click', function(e){ if(e.target===modal){ cleanupBlob(); modal.classList.remove('open'); }}, false);
 
+/* ==== Детектор iOS Safari ==== */
+function isIOSSafari() {
+  const ua = navigator.userAgent || "";
+  const iOS = /iPad|iPhone|iPod/.test(ua);
+  const safari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+  return iOS && safari;
+}
+
+/* ===== Предпросмотр ===== */
 function openNoPreview(rawUrl, displayName){
   cleanupBlob();
   mtitle.textContent = displayName;
   mdown.href = rawUrl;
   mopen.href = rawUrl;
   mstatus.textContent = "";
-  mview.innerHTML = '<div class="hint">Предпросмотр этого типа файла недоступен. <br>Пожалуйста, <a class="link" href="'+rawUrl+'" download>скачайте файл</a>.</div>';
+  mview.innerHTML = '<div class="hint">Предпросмотр этого типа файла недоступен. <br>Пожалуйста, <a class="link" href="'+rawUrl+'" target="_blank" rel="noopener">скачайте файл</a>.</div>';
   modal.classList.add('open');
 }
 
-/* ===== Предпросмотр — ВСЕГДА через pdf.js для PDF ===== */
 function openPreview(rawUrl, displayName, ext){
   cleanupBlob();
   mtitle.textContent = displayName;
@@ -244,33 +252,47 @@ function openPreview(rawUrl, displayName, ext){
   mview.innerHTML = '<div class="hint">Загрузка…</div>';
   modal.classList.add('open');
 
-  if (ext === "pdf"){
-    var pdfjsBase = "https://mozilla.github.io/pdf.js/web/viewer.html";
-    var pdfjs = pdfjsBase + "?file=" + encodeURIComponent(rawUrl) + "#zoom=page-width&pagemode=none&view=FitH";
-    mview.innerHTML = '<iframe src="'+pdfjs+'" allow="fullscreen" allowfullscreen></iframe>';
-    mstatus.textContent = "";
-    return;
-  }
-
-  if (["png","jpg","jpeg","webp","gif"].indexOf(ext)>=0){
-    mview.innerHTML = '<img src="'+rawUrl+'" alt="'+escapeHtml(displayName)+'">';
-    mstatus.textContent = "";
-    return;
-  }
-
-  if (["txt","md","csv","log","html","htm"].indexOf(ext)>=0){
-    fetch(rawUrl, {cache:'no-store'}).then(function(r){
-      if(!r.ok) throw new Error("text fail");
-      return r.text();
-    }).then(function(text){
-      mview.innerHTML = '<pre>'+escapeHtml(text)+'</pre>';
+  // PDF
+  if (ext === "pdf") {
+    if (isIOSSafari()) {
+      // На iOS Safari используем нативный просмотр PDF
+      mview.innerHTML =
+        '<object data="'+rawUrl+'#view=FitH" type="application/pdf" '+
+        'style="width:100%;height:80vh;"></object>'+
+        '<div class="hint">Если документ не отобразился, '+
+        '<a class="link" href="'+rawUrl+'" target="_blank" rel="noopener">откройте в новой вкладке</a>.</div>';
       mstatus.textContent = "";
-    }).catch(function(){
-      openNoPreview(rawUrl, displayName);
-    });
+      return;
+    } else {
+      // На ПК/Android — через pdf.js
+      var pdfjsBase = "https://mozilla.github.io/pdf.js/web/viewer.html";
+      var pdfjs = pdfjsBase + "?file=" + encodeURIComponent(rawUrl) + "#zoom=page-width&pagemode=none&view=FitH";
+      mview.innerHTML = '<iframe src="'+pdfjs+'" allow="fullscreen" allowfullscreen></iframe>';
+      mstatus.textContent = "";
+      return;
+    }
+  }
+
+  // Картинки
+  if (["png","jpg","jpeg","webp","gif"].indexOf(ext)>=0){
+    mview.innerHTML = '<img src="'+rawUrl+'" alt="'+escapeHtml(displayName)+'" style="width:100%;height:80vh;object-fit:contain;">';
+    mstatus.textContent = "";
     return;
   }
 
+  // Текстовые
+  if (["txt","md","csv","log","html","htm"].indexOf(ext)>=0){
+    fetch(rawUrl, {cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error("text fail"); return r.text(); })
+      .then(function(text){
+        mview.innerHTML = '<pre>'+escapeHtml(text)+'</pre>';
+        mstatus.textContent = "";
+      })
+      .catch(function(){ openNoPreview(rawUrl, displayName); });
+    return;
+  }
+
+  // Иные форматы — без предпросмотра
   openNoPreview(rawUrl, displayName);
 }
 
