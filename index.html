@@ -67,10 +67,12 @@
   </div>
 
   <script>
-    // Настройки доступа к репозиторию
-    const repo   = "Ranepalip/-";        // <— Укажи свой {owner}/{repo}
+    /* === Настройки репозитория === */
+    const repo   = "Ranepalip/-";  // {owner}/{repo}
     const branch = "main";
-    const token  = "";                   // если репозиторий приватный — вставь PAT
+    const token  = "";             // если репозиторий приватный — вставьте PAT
+
+    const [owner, repoName] = repo.split('/');
 
     // DOM
     const modal  = document.getElementById('modal');
@@ -80,7 +82,10 @@
     const mview  = document.getElementById('mview');
     const mstatus= document.getElementById('mstatus');
 
-    // Поиск
+    function escapeHtml(str){
+      return str.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    }
+
     async function searchFiles(){
       const q = document.getElementById('query').value.trim().toLowerCase();
       const box = document.getElementById('results');
@@ -101,18 +106,19 @@
         if(!filtered.length){ box.textContent = 'Ничего не найдено'; return; }
 
         filtered.forEach(f=>{
-          const raw = `https://raw.githubusercontent.com/${repo}/${branch}/${encodeURIComponent(f.path)}`;
-          const ext = f.path.split('.').pop().toLowerCase();
+          const path = f.path;                             // сырой путь
+          const raw  = `https://raw.githubusercontent.com/${repo}/${branch}/${encodeURIComponent(path)}`;
+          const ext  = path.split('.').pop().toLowerCase();
 
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `
-            <h3>${f.path.split('/').pop()}</h3>
-            <p>${f.path}</p>
+            <h3>${path.split('/').pop()}</h3>
+            <p>${path}</p>
             <small>${(f.size/1024).toFixed(2)} KB</small>
             <div class="actions">
               <a href="${raw}" target="_blank" rel="noopener">Скачать</a>
-              <a href="#" onclick="openPreview('${raw}','${f.path}','${ext}');return false;">Смотреть</a>
+              <a href="#" onclick="openPreview('${path}','${ext}');return false;">Смотреть</a>
             </div>`;
           box.appendChild(card);
         });
@@ -122,12 +128,6 @@
       }
     }
 
-    // Экранирование
-    function escapeHtml(str){
-      return str.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-    }
-
-    // Открыть в новой вкладке
     function openInNewTab(url){
       try{
         const a = document.createElement('a');
@@ -140,41 +140,44 @@
       }
     }
 
-    // Предпросмотр
-    function openPreview(rawUrl, displayName, ext){
-      mtitle.textContent = displayName;
+    // Главная функция предпросмотра
+    function openPreview(path, ext){
+      const fileName = path.split('/').pop();
+      mtitle.textContent = fileName;
+
+      // ссылку «Скачать» оставляем с raw.githubusercontent.com
+      const rawUrl = `https://raw.githubusercontent.com/${repo}/${branch}/${encodeURIComponent(path)}`;
       mdown.href = rawUrl;
       mopen.href = rawUrl;
+
+      // А ДЛЯ ПРЕДПРОСМОТРА — CDN (исправляет iOS Safari)
+      const cdnUrl = `https://cdn.jsdelivr.net/gh/${owner}/${repoName}@${branch}/${encodeURI(path)}`;
+
       mstatus.textContent = '';
       mview.innerHTML = '';
       modal.classList.add('open');
 
-      // --- PDF: открываем pdf.js в новой вкладке (работает на iOS/Android/ПК)
       if(ext === 'pdf'){
-        const viewerBase = 'https://mozilla.github.io/pdf.js/web/viewer.html';
-        // ВАЖНО: используем encodeURI, чтобы НЕ перекодировать уже закоданные %xx
-        const viewerUrl  = viewerBase + '?file=' + encodeURI(rawUrl) + '#zoom=page-width&pagemode=none';
-        modal.classList.remove('open');     // модалка не нужна — сразу переходим
+        const viewer = 'https://mozilla.github.io/pdf.js/web/viewer.html';
+        const viewerUrl = `${viewer}?file=${encodeURI(cdnUrl)}#zoom=page-width&pagemode=none`;
+        modal.classList.remove('open');  // в новой вкладке
         openInNewTab(viewerUrl);
         return;
       }
 
-      // Картинки
       if(['png','jpg','jpeg','webp','gif'].includes(ext)){
-        mview.innerHTML = `<img src="${rawUrl}" alt="${escapeHtml(displayName)}">`;
+        mview.innerHTML = `<img src="${cdnUrl}" alt="${escapeHtml(fileName)}">`;
         return;
       }
 
-      // Текстовые
       if(['txt','md','csv','log','html','htm'].includes(ext)){
-        fetch(rawUrl, {cache:'no-store'})
+        fetch(cdnUrl, {cache:'no-store'})
           .then(r=>r.text())
           .then(t=> mview.innerHTML = `<pre>${escapeHtml(t)}</pre>`)
           .catch(()=> mview.innerHTML = `<div class="hint">Ошибка предпросмотра</div>`);
         return;
       }
 
-      // Прочее (архивы и т.п.)
       mview.innerHTML = `<div class="hint">Предпросмотр недоступен, скачайте файл</div>`;
     }
   </script>
