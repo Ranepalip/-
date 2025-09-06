@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Научная библиотека — Липецкий филиал РАНХиГС</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { font-family: Arial, sans-serif; margin:0; background:#fafafa; }
     header { background:#fff; border-bottom:4px solid #8b0000; padding:15px 20px; }
@@ -12,8 +12,8 @@
 
     .container { max-width:900px; margin:20px auto; padding:0 10px; }
     .search-box { display:flex; gap:10px; margin-bottom:20px; }
-    .search-box input { flex:1; padding:10px; font-size:16px; border:1px solid #ccc; border-radius:5px; }
-    .search-box button { background:#8b0000; color:#fff; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; }
+    .search-box input { flex:1; padding:10px; font-size:16px; border:1px solid #ccc; border-radius:6px; }
+    .search-box button { background:#8b0000; color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; }
     .search-box button:hover { background:#a00000; }
 
     .results { display:flex; flex-direction:column; gap:10px; }
@@ -43,6 +43,7 @@
     <h1>ПРЕЗИДЕНТСКАЯ АКАДЕМИЯ — НАУЧНАЯ БИБЛИОТЕКА</h1>
     <h2>Липецкий филиал РАНХиГС</h2>
   </header>
+
   <div class="container">
     <div class="search-box">
       <input id="query" type="text" placeholder="Введите часть имени файла…">
@@ -51,14 +52,14 @@
     <div class="results" id="results"></div>
   </div>
 
-  <!-- Модалка -->
+  <!-- Модальное окно -->
   <div class="modal" id="modal">
     <div class="modal-content">
       <button class="close" onclick="modal.classList.remove('open')">Закрыть</button>
       <h3 id="mtitle"></h3>
       <div class="actions">
-        <a id="mdown" href="#" target="_blank">Скачать файл</a>
-        <a id="mopen" href="#" target="_blank">Открыть в новой вкладке</a>
+        <a id="mdown" href="#" target="_blank" rel="noopener">Скачать файл</a>
+        <a id="mopen" href="#" target="_blank" rel="noopener">Открыть в новой вкладке</a>
       </div>
       <div class="viewer" id="mview"><div class="hint">Предпросмотр</div></div>
       <div class="hint" id="mstatus"></div>
@@ -66,92 +67,115 @@
   </div>
 
   <script>
-    const repo = "Ranepalip/-"; // Укажи свой репозиторий
+    // Настройки доступа к репозиторию
+    const repo   = "Ranepalip/-";        // <— Укажи свой {owner}/{repo}
     const branch = "main";
-    const token = ""; // Можно вставить токен здесь если нужен приватный репозиторий
+    const token  = "";                   // если репозиторий приватный — вставь PAT
 
-    const modal = document.getElementById("modal");
-    const mtitle = document.getElementById("mtitle");
-    const mdown = document.getElementById("mdown");
-    const mopen = document.getElementById("mopen");
-    const mview = document.getElementById("mview");
-    const mstatus = document.getElementById("mstatus");
+    // DOM
+    const modal  = document.getElementById('modal');
+    const mtitle = document.getElementById('mtitle');
+    const mdown  = document.getElementById('mdown');
+    const mopen  = document.getElementById('mopen');
+    const mview  = document.getElementById('mview');
+    const mstatus= document.getElementById('mstatus');
 
-    async function searchFiles() {
-      const q = document.getElementById("query").value.trim().toLowerCase();
-      const resultsDiv = document.getElementById("results");
-      resultsDiv.innerHTML = "Загрузка…";
-      try {
-        const res = await fetch(`https://api.github.com/repos/${repo}/git/trees/${branch}?recursive=1`, {
-          headers: token ? { Authorization: "token " + token } : {}
-        });
+    // Поиск
+    async function searchFiles(){
+      const q = document.getElementById('query').value.trim().toLowerCase();
+      const box = document.getElementById('results');
+      box.textContent = 'Загрузка…';
+
+      try{
+        const res = await fetch(
+          `https://api.github.com/repos/${repo}/git/trees/${branch}?recursive=1`,
+          token ? { headers : { Authorization : 'token ' + token } } : {}
+        );
         const data = await res.json();
-        if (!data.tree) throw new Error("Файлы не найдены");
-        const files = data.tree.filter(f => f.type === "blob");
+        if(!data.tree) throw new Error('Не удалось получить список файлов');
+
+        const files = data.tree.filter(n => n.type === 'blob');
         const filtered = q ? files.filter(f => f.path.toLowerCase().includes(q)) : files;
-        resultsDiv.innerHTML = "";
-        if (!filtered.length) { resultsDiv.textContent = "Ничего не найдено"; return; }
-        filtered.forEach(f => {
+
+        box.innerHTML = '';
+        if(!filtered.length){ box.textContent = 'Ничего не найдено'; return; }
+
+        filtered.forEach(f=>{
           const raw = `https://raw.githubusercontent.com/${repo}/${branch}/${encodeURIComponent(f.path)}`;
-          const ext = f.path.split(".").pop().toLowerCase();
-          const card = document.createElement("div");
-          card.className = "card";
+          const ext = f.path.split('.').pop().toLowerCase();
+
+          const card = document.createElement('div');
+          card.className = 'card';
           card.innerHTML = `
-            <h3>${f.path.split("/").pop()}</h3>
+            <h3>${f.path.split('/').pop()}</h3>
             <p>${f.path}</p>
             <small>${(f.size/1024).toFixed(2)} KB</small>
             <div class="actions">
-              <a href="${raw}" target="_blank">Скачать</a>
+              <a href="${raw}" target="_blank" rel="noopener">Скачать</a>
               <a href="#" onclick="openPreview('${raw}','${f.path}','${ext}');return false;">Смотреть</a>
             </div>`;
-          resultsDiv.appendChild(card);
+          box.appendChild(card);
         });
-      } catch(e) {
-        resultsDiv.textContent = "Ошибка загрузки: " + e.message;
+
+      }catch(e){
+        box.textContent = 'Ошибка: ' + e.message;
       }
     }
 
-    function escapeHtml(str) {
-      return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    // Экранирование
+    function escapeHtml(str){
+      return str.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
     }
 
-    function openInNewTab(url) {
-      try {
+    // Открыть в новой вкладке
+    function openInNewTab(url){
+      try{
         const a = document.createElement('a');
         a.href = url; a.target = '_blank'; a.rel = 'noopener';
-        document.body.appendChild(a); a.click(); a.remove();
-      } catch { window.open(url,'_blank'); }
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }catch{
+        window.open(url,'_blank','noopener');
+      }
     }
 
-    function openPreview(rawUrl, displayName, ext) {
+    // Предпросмотр
+    function openPreview(rawUrl, displayName, ext){
       mtitle.textContent = displayName;
       mdown.href = rawUrl;
       mopen.href = rawUrl;
-      mstatus.textContent = "";
-      mview.innerHTML = "";
-      modal.classList.add("open");
+      mstatus.textContent = '';
+      mview.innerHTML = '';
+      modal.classList.add('open');
 
-      if (ext === "pdf") {
-        const viewerBase = "https://mozilla.github.io/pdf.js/web/viewer.html";
-        const viewerUrl = viewerBase + "?file=" + encodeURIComponent(rawUrl);
-        modal.classList.remove("open"); // сразу в новую вкладку
+      // --- PDF: открываем pdf.js в новой вкладке (работает на iOS/Android/ПК)
+      if(ext === 'pdf'){
+        const viewerBase = 'https://mozilla.github.io/pdf.js/web/viewer.html';
+        // ВАЖНО: используем encodeURI, чтобы НЕ перекодировать уже закоданные %xx
+        const viewerUrl  = viewerBase + '?file=' + encodeURI(rawUrl) + '#zoom=page-width&pagemode=none';
+        modal.classList.remove('open');     // модалка не нужна — сразу переходим
         openInNewTab(viewerUrl);
         return;
       }
 
-      if (["png","jpg","jpeg","gif","webp"].includes(ext)) {
+      // Картинки
+      if(['png','jpg','jpeg','webp','gif'].includes(ext)){
         mview.innerHTML = `<img src="${rawUrl}" alt="${escapeHtml(displayName)}">`;
         return;
       }
 
-      if (["txt","md","csv","html","htm","log"].includes(ext)) {
-        fetch(rawUrl).then(r=>r.text()).then(text=>{
-          mview.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
-        }).catch(()=> mview.innerHTML="<div class='hint'>Ошибка предпросмотра</div>");
+      // Текстовые
+      if(['txt','md','csv','log','html','htm'].includes(ext)){
+        fetch(rawUrl, {cache:'no-store'})
+          .then(r=>r.text())
+          .then(t=> mview.innerHTML = `<pre>${escapeHtml(t)}</pre>`)
+          .catch(()=> mview.innerHTML = `<div class="hint">Ошибка предпросмотра</div>`);
         return;
       }
 
-      mview.innerHTML = "<div class='hint'>Предпросмотр недоступен, скачайте файл</div>";
+      // Прочее (архивы и т.п.)
+      mview.innerHTML = `<div class="hint">Предпросмотр недоступен, скачайте файл</div>`;
     }
   </script>
 </body>
